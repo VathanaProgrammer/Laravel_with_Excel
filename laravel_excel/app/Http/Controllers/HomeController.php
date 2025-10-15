@@ -15,39 +15,33 @@ class HomeController extends Controller
     }
         
     //
-public function index($page = 1)
-{
-    $perPage = 100;
-    $startRow = 10 + ($page - 1) * $perPage;
+    public function index(Request $request){
+        $search = request()->query('search');
 
-    $search = request()->query('search');
+        // Read all products from Excel — no limit
+        $allProducts = $this->excel->read("products", 10, 0, 7, 8, 1000000);
 
-    if ($search) {
-        // Search all rows
-        $allProducts = $this->excel->read("products", 10, 0, 7, 8); // read ALL
-        $filtered = array_filter($allProducts, function($p) use ($search) {
-            return str_contains(strtolower($p['name_en']), strtolower($search)) ||
-                   str_contains(strtolower($p['name_kh']), strtolower($search)) ||
-                   str_contains(strtolower($p['code']), strtolower($search));
-        });
-        dd($filtered);
-        return view('inventory', [
-            'products' => $filtered,
-            'page' => 1
-        ]);
+        // If searching, filter
+        if ($search) {
+            $allProducts = array_filter($allProducts, function($p) use ($search) {
+                return str_contains(strtolower($p['name_en']), strtolower($search)) ||
+                    str_contains(strtolower($p['name_kh']), strtolower($search)) ||
+                    str_contains(strtolower($p['code']), strtolower($search));
+            });
+        }
+
+    // AJAX request: return only partial
+    if ($request->ajax()) {
+        return view('partials.product-cards', ['products' => $allProducts])->render();
     }
 
-    // Normal pagination
-    $products = $this->excel->read("products", $startRow, 0, 7, 8);
-
-    return view('inventory', [
-        'products' => $products,
-        'page' => $page
-    ]);
-}
-
-
-
+        // Return all (no pagination, no load more)
+        return view('inventory', [
+            'products' => $allProducts,
+            'page' => 1,
+            'isSearch' => false
+        ]);
+    }
 
 
     public function loadMoreProducts($page)

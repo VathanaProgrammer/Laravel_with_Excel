@@ -2,57 +2,30 @@
 @extends('layout')
 
 @section('content')
-    <header class="flex justify-end items-center mb-6">
-        <div class="relative min-w-[250px] max-w-[350px]">
-            <input type="text" placeholder="Search products"
+    <header class="flex justify-between items-center mb-6">
+        <p id="match-count" class=" text-gray-600 font-medium"></p>
+        <div id="searchWrapper" class="relative min-w-[250px] max-w-[350px]">
+            <input type="text" id="search-input" placeholder="Search products"
                 class="w-full border text-gray-800 text-md pr-10 font-semibold focus:border-[#fff] border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#8501D8]">
             <span class="iconify text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2"
                 data-icon="ic:round-search" data-width="20" data-height="20"></span>
         </div>
     </header>
 
-    <section class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2">
-        @for ($i = 0; $i < 12; $i++)
-            <div class="bg-white rounded-2xl shadow-sm p-2 overflow-hidden hover:shadow-md transition-shadow">
-                <!-- Product Image -->
-                <div class="relative w-full h-40 flex items-center justify-center">
-                    <img src="{{ Vite::asset('resources/images/3.jpg') }}" alt="Product Image"
-                        class="object-cover h-full w-full rounded-2xl">
-                </div>
-
-                <!-- Product Details -->
-                <div class="p-3 space-y-2">
-                    <!-- Code -->
-                    <p class="text-sm text-gray-500 font-medium">Code: <span
-                            class="text-yellow-600">P{{ 1000 + $i }}</span></p>
-
-                    <!-- English Name -->
-                    <h2 class="text-lg font-semibold text-gray-900 truncate"
-                        title="Orange Green Local (Batdambong) {{ $i + 1 }}">
-                        Orange Green Local (Batdambong) {{ $i + 1 }}
-                    </h2>
-
-                    <!-- Khmer Name -->
-                    <h3 class="text-md text-gray-700 truncate" title="ផលិតផល {{ $i + 1 }}">
-                        ផលិតផល {{ $i + 1 }}
-                    </h3>
-
-                    <div class="flex items-center justify-between">
-                        <!-- Unit -->
-                        <p class="text-sm text-gray-500">Unit: <span class="font-medium text-gray-800">Piece</span></p>
-
-                        <!-- Price -->
-                        <p class="text-lg font-bold text-[#8501D8]">$19.99</p>
-                    </div>
-                </div>
-            </div>
-        @endfor
+    <section id="product-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        @include('partials.product-sale-card')
     </section>
+    <div id="overlay-loader" class="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center hidden">
+        <div class="spinner">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+        </div>
+    </div>
 @endsection
 
 @section('right-panel')
-    <form action="" method="POST" class="h-full flex flex-col">
-        @csrf
+    <form action="" class="h-full flex flex-col">
         <h2 class="text-xl font-bold mb-4 text-center text-white">Order Panel</h2>
 
         <!-- Table for order items -->
@@ -66,9 +39,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @for ($i = 0; $i < 31; $i++)
+                    {{-- @for ($i = 0; $i < 31; $i++)
                         @php
-                            $nameEn = "Chilli Red Hot Small (Bird Eye) $i";
+                            $displayEn = "Chilli Red Hot Small (Bird Eye) $i";
                             $nameKh = "ក្រូចពោធិសាត់​ (បាត់តំបង) $i";
                             $maxLength = 15;
                             $displayEn =
@@ -119,7 +92,7 @@
                                 $<span>1237.00</span>
                             </td>
                         </tr>
-                    @endfor
+                    @endfor --}}
                 </tbody>
 
             </table>
@@ -131,47 +104,263 @@
                 <span class="font-bold text-white">Total:</span>
                 <span class="font-bold text-green-400 text-lg" id="total">$1200.00</span>
             </div>
-            <div class="flex justify-center w-full mb-2"> 
-                <button type="submit"
+            <div class="flex justify-center w-full mb-2">
+                <button id="preview-btn"
                     class="min-w-[150px] w-[250px] bg-[#fff] text-gray-800 py-2 rounded-lg font-bold hover:bg-gray-400 transition">
                     Continue
                 </button>
             </div>
         </div>
     </form>
-
     <script>
-        function calculateTotal() {
-            let total = 0;
-            document.querySelectorAll('.quantity-input').forEach(input => {
-                const price = parseFloat(input.dataset.price);
-                const qty = parseInt(input.value) || 0;
-                const subtotalElem = input.closest('tr').querySelector('.subtotal span');
-                const subtotal = price * qty;
-                subtotalElem.textContent = subtotal.toFixed(2);
-                total += subtotal;
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('product-container');
+            const overlayLoader = document.getElementById('overlay-loader');
+            const searchInput = document.getElementById('search-input');
+            const matchCount = document.getElementById('match-count');
+
+            function fetchProducts(search = '') {
+                overlayLoader.classList.remove('hidden');
+
+                fetch(`/sale?search=${encodeURIComponent(search)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(res => res.text())
+                    .then(html => {
+                        container.innerHTML = html;
+                        matchCount.innerText = `Products found: ${container.children.length}`;
+                        overlayLoader.classList.add('hidden');
+                    })
+                    .catch(() => overlayLoader.classList.add('hidden'));
+            }
+
+            function debounceSearch(callback, delay) {
+                let timer;
+                return function(...args) {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => callback.apply(this, args), delay);
+                };
+            }
+
+            searchInput.addEventListener('input', debounceSearch(() => fetchProducts(searchInput.value.trim()),
+                500));
+
+            // Initial load
+            fetchProducts();
+
+            const wrapper = document.getElementById('searchWrapper');
+            const offsetTop = wrapper.offsetTop;
+            const originalWidth = wrapper.offsetWidth + 'px';
+            window.addEventListener('scroll', () => {
+                if (window.pageYOffset > offsetTop) {
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.top = '10px';
+                    wrapper.style.width = originalWidth;
+                    wrapper.style.zIndex = '50';
+                    wrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                } else {
+                    wrapper.style.position = 'relative';
+                    wrapper.style.width = '';
+                    wrapper.style.top = '';
+                    wrapper.style.zIndex = '';
+                    wrapper.style.boxShadow = '';
+                }
             });
-            document.getElementById('total').textContent = '$' + total.toFixed(2);
+
+            const orderTableBody = document.querySelector("table tbody");
+            const totalDisplay = document.getElementById("total");
+
+            function updateTotal() {
+                let total = 0;
+                orderTableBody.querySelectorAll("tr").forEach(row => {
+                    const price = parseFloat(row.querySelector(".price").textContent) || 0;
+                    const qty = parseInt(row.querySelector(".quantity-input").value) || 0;
+                    total += price * qty;
+                });
+                totalDisplay.textContent = `$${total.toFixed(2)}`;
+            }
+
+            // 🔹 Helper function to truncate text (English + Khmer)
+            function truncateText(selector, maxLength) {
+                document.querySelectorAll(selector).forEach(el => {
+                    const text = el.textContent.trim();
+                    if (text.length > maxLength) {
+                        el.textContent = text.substring(0, maxLength) + '...';
+                    }
+                });
+            }
+
+            // When product is clicked
+            container.addEventListener("click", e => {
+                const card = e.target.closest(".product-card");
+                if (!card) return;
+
+                const id = card.dataset.id;
+                const nameEn = card.dataset.name_en;
+                const nameKh = card.dataset.name_kh;
+                const price = parseFloat(card.dataset.price.replace("$", "").trim());
+
+                // Shorten product names before inserting into table
+                const displayEn = nameEn.length > 15 ? nameEn.substring(0, 15) + '...' : nameEn;
+                const displayKh = nameKh.length > 15 ? nameKh.substring(0, 15) + '...' : nameKh;
+
+                // Check if already exists in order
+                let existingRow = orderTableBody.querySelector(`tr[data-id='${id}']`);
+                if (existingRow) {
+                    let qtyInput = existingRow.querySelector(".quantity-input");
+                    qtyInput.value = parseInt(qtyInput.value) + 1;
+                    updateTotal();
+                    return;
+                }
+
+                // Create new row
+                const tr = document.createElement("tr");
+                tr.dataset.id = id;
+                tr.dataset.name_en = nameEn; // full text
+                tr.dataset.name_kh = nameKh; // full text
+                tr.className = "hover:bg-gray-500 text-white";
+                tr.innerHTML = `
+                                <td class="border-b px-3 py-2 text-[16px] font-medium">
+                                    <div class="flex flex-col">
+                                        <span data-name_en class="en_lang font-semibold truncate" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${displayEn}</span>
+                                        <span data-name_kh class="kh_lang text-sm khmer font-bold text-gray-200 truncate">${displayKh}</span>
+                                    </div>
+                                </td>
+                                <td class="border-b px-1 py-1 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <button type="button" class="decrease bg-gray-700 hover:bg-gray-600 rounded-md h-6 w-6">-</button>
+                                        <input type="text" value="1" class="quantity-input shrink-0 w-12 text-center bg-transparent text-white border-0">
+                                        <button type="button" class="increase bg-gray-700 hover:bg-gray-600 rounded-md h-6 w-6">+</button>
+                                    </div>
+                                </td>
+                                <td class="border-b px-1 py-2 text-right break-all">
+                                    $<span class="price">${price.toFixed(2)}</span>
+                                </td>
+                            `;
+                orderTableBody.appendChild(tr);
+                updateTotal();
+            });
+
+            // Handle + / - buttons
+            orderTableBody.addEventListener("click", e => {
+                const row = e.target.closest("tr");
+                if (!row) return;
+                const qtyInput = row.querySelector(".quantity-input");
+
+                if (e.target.classList.contains("increase")) {
+                    qtyInput.value = parseInt(qtyInput.value) + 1;
+                } else if (e.target.classList.contains("decrease")) {
+                    if (qtyInput.value == 1) {
+                        row.remove();
+                    } else {
+                        qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
+                    }
+
+                }
+                updateTotal();
+            });
+
+            // Detect when user types directly into the quantity input
+            orderTableBody.addEventListener("input", e => {
+                if (e.target.classList.contains("quantity-input")) {
+                    let val = parseInt(e.target.value);
+
+                    // Prevent invalid values (like 0 or negative or NaN)
+                    if (isNaN(val) || val < 1) val = 1;
+
+                    e.target.value = val;
+                    updateTotal();
+                }
+            });
+
+
+            // Order button to preview Area
+
+            const previewButton = document.getElementById("preview-btn");
+
+            previewButton.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const rows = orderTableBody.querySelectorAll("tr");
+                const items = [];
+
+                rows.forEach(row => {
+                    const code = row.dataset.id;
+                    const nameEn = row.dataset.name_en;
+                    const nameKh = row.dataset.name_kh;
+                    const qty = parseInt(row.querySelector(".quantity-input").value) || 0;
+                    const price = parseFloat(row.querySelector(".price").textContent) || 0;
+
+                    if (qty > 0) {
+                        items.push({
+                            code,
+                            nameEn,
+                            nameKh,
+                            qty,
+                            price
+                        });
+                    }
+                });
+
+                if (items.length === 0) {
+                    toastr.error("Please select at least one product.");
+                    return;
+                }
+
+                fetch("{{ route('invoice-preview') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            items
+                        })
+                    })
+                    .then(res => {
+                        if (res.ok) window.location.href = "{{ route('invoice-preview') }}";
+                    })
+                    .catch(err => console.error(err));
+            });
+        });
+    </script>
+
+    <style>
+        .spinner {
+            width: 70px;
+            text-align: center;
         }
 
-        // Handle input change
-        document.querySelectorAll('.quantity-input').forEach(input => {
-            input.addEventListener('input', calculateTotal);
-        });
+        .spinner>div {
+            width: 18px;
+            height: 18px;
+            background-color: #fff;
+            border-radius: 100%;
+            display: inline-block;
+            animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+        }
 
-        // Handle + / - buttons
-        document.querySelectorAll('.qty-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const input = btn.closest('td').querySelector('.quantity-input');
-                let value = parseInt(input.value) || 0;
-                if (btn.dataset.action === 'increase') value++;
-                if (btn.dataset.action === 'decrease' && value > 0) value--;
-                input.value = value;
-                calculateTotal();
-            });
-        });
+        .spinner .bounce1 {
+            animation-delay: -0.32s;
+        }
 
-        // Initialize total on page load
-        calculateTotal();
-    </script>
+        .spinner .bounce2 {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes sk-bouncedelay {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1.0);
+            }
+        }
+    </style>
 @endsection

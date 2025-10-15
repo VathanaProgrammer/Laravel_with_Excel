@@ -28,18 +28,25 @@
         <aside id="default-sidebar"
             class="fixed top-0 left-0 z-40 w-64 h-screen bg-[#8501D8] transform -translate-x-full transition-transform sm:translate-x-0 rounded-r-xl"
             aria-label="Sidebar">
-            <div class="h-full px-3 pr-0 py-12 overflow-y-auto">
+            <div class="h-full flex flex-col px-3 pr-0 py-12 overflow-y-auto">
                 <ul class="space-y-2 font-medium" id="menuLinks">
                     <!-- Profile -->
                     <li>
                         <a href="#" class="flex items-center flex-col">
                             <div class="p-1 bg-white rounded-full">
                                 <img class="rounded-full border-2 border-[#8501D8] w-[100px] h-[100px] object-cover md:w-[154px] md:h-[154px]"
-                                    src="{{ Vite::asset('resources/images/2.jpg') }}" alt="">
+                                    src="{{ Auth::user()->image_url ? asset('storage/' . Auth::user()->image_url) : Vite::asset('resources\images\2.jpg') }}"
+                                    alt="">
                             </div>
                         </a>
-                        <h1 class="text-white md:text-[20px] text-center md:mt-6">Nen Seanghai</h1>
-                        <p class="text-white md:text-[13px] text-center md:mt-2">NenSeanghai123@gmail.com</p>
+                        <h1 class="text-white md:text-[20px] text-center md:mt-6">
+                            {{ Auth::user()->first_name . ' ' . Auth::user()->last_name ?? 'Someone' }}
+                        </h1>
+
+                        <p class="text-white md:text-[13px] text-center md:mt-2">
+                            {{ Auth::user()->email ?? 'someone@gmail.com' }}
+                        </p>
+
                     </li>
 
                     <!-- Menu items -->
@@ -69,14 +76,36 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#"
+                        <a href="{{ route('report') }}"
                             class="menu-link flex items-center p-2 rounded-l-lg text-white hover:bg-white hover:text-black">
                             <span class="iconify text-white" data-icon="line-md:document-report-twotone" data-width="24"
                                 data-height="24"></span>
                             <span class="ms-3">Reports</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('profile') }}"
+                            class="menu-link flex items-center p-2 rounded-l-lg text-white hover:bg-white hover:text-black">
+                            <span class="iconify text-white" data-icon="gg:profile" data-width="24"
+                                data-height="24"></span>
+                            <span class="ms-3">Profile</span>
+                            {{-- @if(session('success'))
+                                <span class="ms-3">Profile</span>
+                            @endif --}}
+                        </a>
+                    </li>
                 </ul>
+                <!-- Logout button at the bottom -->
+                <div class="mt-auto pb-1 me-2">
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                            class="w-full flex items-center justify-center p-2 rounded-lg  bg-red-600 text-white hover:bg-red-700 transition-colors">
+                            <span class="iconify mr-2" data-icon="mdi:logout" data-width="24" data-height="24"></span>
+                            Logout
+                        </button>
+                    </form>
+                </div>
             </div>
         </aside>
 
@@ -84,9 +113,11 @@
         <div class="p-4 sm:ml-64 {{ request()->routeIs('sale') ? 'mr-[350px]' : '' }}">
             <!-- Notice the `mr-[350px]` → gives space for the right panel -->
             <main>
+                @yield('notification')
                 @yield('content')
             </main>
         </div>
+
 
         <!-- Right Panel -->
         @hasSection('right-panel')
@@ -106,7 +137,6 @@
             </script>
         @endif
     </main>
-
     <script>
         const sidebar = document.getElementById("default-sidebar");
         const sidebarToggle = document.getElementById("sidebarToggle");
@@ -124,7 +154,25 @@
             sidebarOverlay.classList.add("hidden");
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (session('success'))
+                toastr.success("{{ session('success') }}", "Success");
+            @endif
 
+            @if (session('error'))
+                toastr.error("{{ session('error') }}", "Error");
+            @endif
+
+            @if (session('info'))
+                toastr.info("{{ session('info') }}", "Info");
+            @endif
+
+            @if (session('warning'))
+                toastr.warning("{{ session('warning') }}", "Warning");
+            @endif
+        });
+    </script>
 </body>
 
 </html>

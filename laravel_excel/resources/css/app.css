@@ -1,4 +1,65 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+    font-family: "Battambang";
+    src: url("../../public/storage/fonts/Battambang-Regular.ttf");
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Battambang";
+    src: url("../../public/storage/fonts/Battambang-Thin.ttf");
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Battambang";
+    src: url("../../public/storage/fonts/Battambang-Bold.ttf");
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../../public/storage/fonts/RobotoCondensed-Bold.ttf");
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../../public/storage/fonts/Battambang-Regular.ttf");
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../../public/storage/fonts/RobotoCondensed-Medium.ttf");
+    font-weight: bold;
+    font-style: normal;
+}
+
+td:lang(km) {
+    font-family: "Battambang", sans-serif;
+}
+.khmer {
+    font-family: "Battambang", sans-serif;
+}
+
+body{
+     font-family: "Roboto", sans-serif;
+}
+
+.two-line {
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* limit to 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal; /* allow wrapping */
+}
